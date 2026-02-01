@@ -1,12 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Audio Call</title>
+  <meta charset="UTF-8" />
+  <title>Live Audio Call</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background: #0b141a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+    }
+
+    .app {
+      width: 360px;
+      height: 640px;
+      background: #111b21;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: #202c33;
+      padding: 14px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .chat {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #8696a0;
+      font-size: 14px;
+    }
+
+    .controls {
+      background: #202c33;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .call-btn {
+      background: #25d366;
+      border: none;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .call-btn:hover {
+      background: #1ebe5d;
+    }
+  </style>
 </head>
 <body>
-  <h2>Audio Call Test</h2>
 
-  <button id="callBtn">Call</button>
+  <div class="app">
+    <div class="header">
+      Live Audio Call
+    </div>
+
+    <div class="chat">
+      Tap call to connect
+    </div>
+
+    <div class="controls">
+      <button class="call-btn" id="callBtn">📞 Call</button>
+    </div>
+  </div>
+
   <audio id="remoteAudio" autoplay></audio>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -18,45 +98,40 @@
     let localStream;
     let peer;
 
-const config = {
-  iceServers: [
-    { urls: ["stun:stun.relay.metered.ca:80"] },
-    {
-      urls: [
-        "turn:global.relay.metered.ca:80",
-        "turn:global.relay.metered.ca:80?transport=tcp",
-        "turn:global.relay.metered.ca:443",
-    ],
-      username: "69981f486125e5753bb48ae1",
-      credential:"WKfouTAFH1+15uWg",
+    const config = {
+        iceServers: [
+        { urls: ["stun:stun.relay.metered.ca:80"] },
+        {
+        urls: [
+            "turn:global.relay.metered.ca:80",
+            "turn:global.relay.metered.ca:80?transport=tcp",
+            "turn:global.relay.metered.ca:443",
+        ],
+        username: "69981f486125e5753bb48ae1",
+        credential:"WKfouTAFH1+15uWg",
 
     }
   ]
 };
 
-    
+async function getMic() {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+}
 
-    async function getMic() {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
-
-    callBtn.onclick = async () => {
+callBtn.onclick = async () => {
       await getMic();
-
       peer = new RTCPeerConnection(config);
 
-      localStream.getTracks().forEach(track => {
-        peer.addTrack(track, localStream);
-      });
+      localStream.getTracks().forEach(track =>
+        peer.addTrack(track, localStream)
+      );
 
-      peer.ontrack = event => {
-        remoteAudio.srcObject = event.streams[0];
+      peer.ontrack = e => {
+        remoteAudio.srcObject = e.streams[0];
       };
 
-      peer.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit("ice-candidate", event.candidate);
-        }
+      peer.onicecandidate = e => {
+        if (e.candidate) socket.emit("ice-candidate", e.candidate);
       };
 
       const offer = await peer.createOffer();
@@ -66,21 +141,18 @@ const config = {
 
     socket.on("offer", async offer => {
       await getMic();
-
       peer = new RTCPeerConnection(config);
 
-      localStream.getTracks().forEach(track => {
-        peer.addTrack(track, localStream);
-      });
+      localStream.getTracks().forEach(track =>
+        peer.addTrack(track, localStream)
+      );
 
-      peer.ontrack = event => {
-        remoteAudio.srcObject = event.streams[0];
+      peer.ontrack = e => {
+        remoteAudio.srcObject = e.streams[0];
       };
 
-      peer.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit("ice-candidate", event.candidate);
-        }
+      peer.onicecandidate = e => {
+        if (e.candidate) socket.emit("ice-candidate", e.candidate);
       };
 
       await peer.setRemoteDescription(offer);
@@ -89,15 +161,14 @@ const config = {
       socket.emit("answer", answer);
     });
 
-    socket.on("answer", async answer => {
-      await peer.setRemoteDescription(answer);
+    socket.on("answer", answer => {
+      peer.setRemoteDescription(answer);
     });
 
-    socket.on("ice-candidate", async candidate => {
-      if (peer) {
-        await peer.addIceCandidate(candidate);
-      }
+    socket.on("ice-candidate", candidate => {
+      peer.addIceCandidate(candidate);
     });
   </script>
+
 </body>
 </html>
